@@ -1,0 +1,36 @@
+# Chạy PostgreSQL cho pipeline vn-weather-ingestion.
+# Mọi giá trị nhạy cảm được đọc từ file .env
+
+services:
+  db:
+    # phiên bản
+    image: postgres:16
+
+    environment:
+      # Tài khoản quản trị và database mặc định, tạo ở lần khởi tạo đầu tiên=value
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+      # Tài khoản riêng cho pipeline, dùng bởi sql/04_pipeline_user.sh
+      PIPELINE_DB_USER: ${PIPELINE_DB_USER:-pipeline}
+      PIPELINE_DB_PASSWORD: ${PIPELINE_DB_PASSWORD:-}
+
+    ports:
+      # "cổng trên máy : cổng trong container"; mặc định 5432 nếu .env không khai báo
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    volumes:
+      # Named volume: dữ liệu không mất khi xóa và tạo lại container
+      - pgdata:/var/lib/postgresql/data
+       # Các file .sql/.sh trong sql/ tự chạy theo thứ tự tên ở lần khởi tạo đầu tiên
+      - ./sql:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
